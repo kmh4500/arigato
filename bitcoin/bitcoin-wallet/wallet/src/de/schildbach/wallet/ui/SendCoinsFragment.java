@@ -20,6 +20,13 @@ package de.schildbach.wallet.ui;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -37,6 +44,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
@@ -50,9 +58,11 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
+import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
@@ -77,6 +87,7 @@ import com.actionbarsherlock.view.MenuItem;
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.NetworkParameters;
+import com.google.bitcoin.core.ScriptException;
 import com.google.bitcoin.core.Sha256Hash;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.TransactionConfidence;
@@ -84,6 +95,7 @@ import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.Wallet.BalanceType;
 import com.google.bitcoin.core.Wallet.SendRequest;
+import com.google.bitcoin.utils.Threading;
 
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Configuration;
@@ -101,14 +113,16 @@ import de.schildbach.wallet.ui.InputParser.StringInputParser;
 import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.Nfc;
 import de.schildbach.wallet.util.PaymentProtocol;
+import de.schildbach.wallet.util.ThrottlingWalletChangeListener;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class SendCoinsFragment extends SherlockFragment
+public final class SendCoinsFragment extends SherlockFragment implements LoaderCallbacks<List<Transaction>>, SharedPreferences.OnSharedPreferenceChangeListener
 {
+    private static final long THROTTLE_MS = DateUtils.SECOND_IN_MILLIS;
 	private AbstractBindServiceActivity activity;
 	private WalletApplication application;
 	private Configuration config;
@@ -133,7 +147,7 @@ public final class SendCoinsFragment extends SherlockFragment
 
 	private TextView directPaymentMessageView;
 	private ListView sentTransactionView;
-	private TransactionsListAdapter sentTransactionListAdapter;
+	private TransactionsListAdapter adapter;
 	private Button viewGo;
 	private Button viewCancel;
 
@@ -153,7 +167,7 @@ public final class SendCoinsFragment extends SherlockFragment
 	private State state = State.INPUT;
 	private Transaction sentTransaction = null;
 
-	private static final int ID_RATE_LOADER = 0;
+	private static final int ID_RATE_LOADER = 1;
 
 	private static final int REQUEST_CODE_SCAN = 0;
 	private static final int REQUEST_CODE_ENABLE_BLUETOOTH = 1;
@@ -300,7 +314,7 @@ public final class SendCoinsFragment extends SherlockFragment
 				@Override
 				public void run()
 				{
-					sentTransactionListAdapter.notifyDataSetChanged();
+					adapter.notifyDataSetChanged();
 
 					final TransactionConfidence confidence = sentTransaction.getConfidence();
 					final ConfidenceType confidenceType = confidence.getConfidenceType();
@@ -461,8 +475,8 @@ public final class SendCoinsFragment extends SherlockFragment
 		directPaymentMessageView = (TextView) view.findViewById(R.id.send_coins_direct_payment_message);
 
 		sentTransactionView = (ListView) view.findViewById(R.id.send_coins_sent_transaction);
-		sentTransactionListAdapter = new TransactionsListAdapter(activity, wallet, application.maxConnectedPeers(), false);
-		sentTransactionView.setAdapter(sentTransactionListAdapter);
+		adapter = new TransactionsListAdapter(activity, wallet, application.maxConnectedPeers(), false);
+		sentTransactionView.setAdapter(adapter);
 
 		viewGo = (Button) view.findViewById(R.id.send_coins_go);
 		viewGo.setOnClickListener(new OnClickListener()
@@ -563,7 +577,12 @@ public final class SendCoinsFragment extends SherlockFragment
 
 		loaderManager.initLoader(ID_RATE_LOADER, null, rateLoaderCallbacks);
 
-		updateView();
+        config.registerOnSharedPreferenceChangeListener(this);
+
+        loaderManager.initLoader(0, null, this);
+
+        wallet.addEventListener(transactionChangeListener, Threading.SAME_THREAD);
+        updateView();
 	}
 
 	@Override
@@ -574,6 +593,13 @@ public final class SendCoinsFragment extends SherlockFragment
 		amountCalculatorLink.setListener(null);
 
 		contentResolver.unregisterContentObserver(contentObserver);
+
+        wallet.removeEventListener(transactionChangeListener);
+        transactionChangeListener.removeCallbacks();
+
+        loaderManager.destroyLoader(0);
+
+        config.unregisterOnSharedPreferenceChangeListener(this);
 
 		super.onPause();
 	}
@@ -1108,20 +1134,12 @@ public final class SendCoinsFragment extends SherlockFragment
 		directPaymentEnableView.setVisibility(directPaymentVisible ? View.VISIBLE : View.GONE);
 		directPaymentEnableView.setEnabled(state == State.INPUT);
 
-		if (sentTransaction != null)
-		{
-			final int btcPrecision = config.getBtcPrecision();
-			final int btcShift = config.getBtcShift();
+        final int btcPrecision = config.getBtcPrecision();
+        final int btcShift = config.getBtcShift();
 
-			sentTransactionView.setVisibility(View.VISIBLE);
-			sentTransactionListAdapter.setPrecision(btcPrecision, btcShift);
-			sentTransactionListAdapter.replace(sentTransaction);
-		}
-		else
-		{
-			sentTransactionView.setVisibility(View.GONE);
-			sentTransactionListAdapter.clear();
-		}
+        adapter.setPrecision(btcPrecision, btcShift);
+        adapter.clearLabelCache();
+
 
 		if (directPaymentAck != null)
 		{
@@ -1334,4 +1352,136 @@ public final class SendCoinsFragment extends SherlockFragment
 			}
 		}, application.httpUserAgent()).requestPaymentRequest(paymentRequestUrl);
 	}
+
+    @Override
+    public Loader<List<Transaction>> onCreateLoader(final int id, final Bundle args)
+    {
+        return new TransactionsLoader(activity, wallet);
+    }
+
+    @Override
+    public void onLoadFinished(final Loader<List<Transaction>> loader, final List<Transaction> transactions)
+    {
+        adapter.replace(transactions);
+    }
+
+    @Override
+    public void onLoaderReset(final Loader<List<Transaction>> loader)
+    {
+        // don't clear the adapter, because it will confuse users
+    }
+
+    private final ThrottlingWalletChangeListener transactionChangeListener = new ThrottlingWalletChangeListener(THROTTLE_MS)
+    {
+        @Override
+        public void onThrottledWalletChanged()
+        {
+            adapter.notifyDataSetChanged();
+        }
+    };
+
+    private static class TransactionsLoader extends AsyncTaskLoader<List<Transaction>>
+    {
+        private final Wallet wallet;
+
+        private TransactionsLoader(final Context context, @Nonnull final Wallet wallet)
+        {
+            super(context);
+
+            this.wallet = wallet;
+        }
+
+        @Override
+        protected void onStartLoading()
+        {
+            super.onStartLoading();
+
+            wallet.addEventListener(transactionAddRemoveListener, Threading.SAME_THREAD);
+            transactionAddRemoveListener.onReorganize(null); // trigger at least one reload
+
+            forceLoad();
+        }
+
+        @Override
+        protected void onStopLoading()
+        {
+            wallet.removeEventListener(transactionAddRemoveListener);
+            transactionAddRemoveListener.removeCallbacks();
+
+            super.onStopLoading();
+        }
+
+        @Override
+        public List<Transaction> loadInBackground()
+        {
+            final Set<Transaction> transactions = wallet.getTransactions(true);
+            final List<Transaction> filteredTransactions = new ArrayList<Transaction>(transactions.size());
+
+            try
+            {
+                for (final Transaction tx : transactions)
+                {
+                    final boolean sent = tx.getValue(wallet).signum() < 0;
+                    if (sent)
+                        filteredTransactions.add(tx);
+                }
+            }
+            catch (final ScriptException x)
+            {
+                throw new RuntimeException(x);
+            }
+
+            Collections.sort(filteredTransactions, TRANSACTION_COMPARATOR);
+
+            return filteredTransactions;
+        }
+
+        private final ThrottlingWalletChangeListener transactionAddRemoveListener = new ThrottlingWalletChangeListener(THROTTLE_MS, true, true, false)
+        {
+            @Override
+            public void onThrottledWalletChanged()
+            {
+                try
+                {
+                    forceLoad();
+                }
+                catch (final RejectedExecutionException x)
+                {
+                    log.info("rejected execution: " + TransactionsLoader.this.toString());
+                }
+            }
+        };
+
+        private static final Comparator<Transaction> TRANSACTION_COMPARATOR = new Comparator<Transaction>()
+        {
+            @Override
+            public int compare(final Transaction tx1, final Transaction tx2)
+            {
+                final boolean pending1 = tx1.getConfidence().getConfidenceType() == ConfidenceType.PENDING;
+                final boolean pending2 = tx2.getConfidence().getConfidenceType() == ConfidenceType.PENDING;
+
+                if (pending1 != pending2)
+                    return pending1 ? -1 : 1;
+
+                final Date updateTime1 = tx1.getUpdateTime();
+                final long time1 = updateTime1 != null ? updateTime1.getTime() : 0;
+                final Date updateTime2 = tx2.getUpdateTime();
+                final long time2 = updateTime2 != null ? updateTime2.getTime() : 0;
+
+                if (time1 > time2)
+                    return -1;
+                else if (time1 < time2)
+                    return 1;
+                else
+                    return 0;
+            }
+        };
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key)
+    {
+        if (Configuration.PREFS_KEY_BTC_PRECISION.equals(key))
+            updateView();
+    }
 }
