@@ -27,6 +27,14 @@ class ArigatoResponse(object):
   def dump(self):
     return json.dumps(self.__dict__, sort_keys=True)
 
+  def add_phone_number(self, phone_number, public_key):
+    if not 'phone_numbers' in self.__dict__:
+      self.phone_numbers = []
+    self.phone_numbers.append({
+      'phone_number': phone_number,
+      'public_key': public_key,
+    })
+
 
 ArigatoResponse.error_messages = {
   0: 'Success',
@@ -44,8 +52,7 @@ class ArigatoRequestHandler(webapp2.RequestHandler):
       ar.err_message = ArigatoResponse.error_messages[err]
     self.response.write(ar.dump())
 
-  def success(self):
-    ar = ArigatoResponse()
+  def success(self, ar=ArigatoResponse()):
     self.response.write(ar.dump())
 
 
@@ -117,7 +124,9 @@ class Get(ArigatoRequestHandler):
       return
 
     p = phone_numbers[0]
-    self.success()
+    ar = ArigatoResponse()
+    ar.add_phone_number(p.phone_number, p.public_key)
+    self.success(ar)
 
 
 application = webapp2.WSGIApplication([
