@@ -169,7 +169,7 @@
 		android:id="@+id/send_coins_sent_transaction"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:visibility="gone" />
+		android:visibility="visible" />
 
 	<include layout="@layout/send_coins_buttons_include" />
 
