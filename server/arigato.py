@@ -41,7 +41,7 @@ class ArigatoRequestHandler(webapp2.RequestHandler):
     ar = ArigatoResponse()
     ar.err = err
     if self.request.get_all('msg'):
-      ar.error_message = ArigatoResponse.error_messages[err]
+      ar.err_message = ArigatoResponse.error_messages[err]
     self.response.write(ar.dump())
 
   def success(self):
