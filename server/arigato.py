@@ -17,7 +17,11 @@ class PhoneNumber(ndb.Model):
 
   @classmethod
   def query_phone_number(cls, phone_number_key):
-    return cls.query(PhoneNumber.phone_number==phone_number_key).fetch(1)
+    return cls.query(PhoneNumber.phone_number == phone_number_key).fetch(1)
+
+  @classmethod
+  def query_phone_numbers(cls, phone_numbers):
+    return cls.query(PhoneNumber.phone_number.IN(phone_numbers)).fetch(30)
 
 
 class ArigatoResponse(object):
@@ -41,6 +45,7 @@ ArigatoResponse.error_messages = {
   1: 'Fail to send SMS',
   2: 'Fail to find the phone number',
   3: 'Fail to verify',
+  4: 'Fail to convert the request to json data',
 }
 
 
@@ -116,17 +121,29 @@ class Verify(ArigatoRequestHandler):
 
 
 class Get(ArigatoRequestHandler):
-  def get(self):
-    pn = self.request.get('pn')
-    phone_numbers = PhoneNumber.query_phone_number(pn)
+  def query(self, phone_numbers):
+    phone_numbers = PhoneNumber.query_phone_numbers(phone_numbers)
     if not phone_numbers:
       self.error(2)
       return
 
-    p = phone_numbers[0]
     ar = ArigatoResponse()
-    ar.add_phone_number(p.phone_number, p.public_key)
+    for p in phone_numbers:
+      ar.add_phone_number(p.phone_number, p.public_key)
     self.success(ar)
+
+  def get(self):
+    pn = self.request.get('pn')
+    self.query(pn.split(','))
+
+  def post(self):
+    pn = self.request.get('pn')
+    contact = json.loads(pn)
+    if not contact:
+      self.error(4)
+      return
+
+    self.query(contact)
 
 
 application = webapp2.WSGIApplication([
