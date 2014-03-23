@@ -74,7 +74,7 @@ class Init(ArigatoRequestHandler):
     if not pn:
       return
 
-    vc = '%6d' % random.randint(0, 999999)
+    vc = '%6d' % random.randint(100000, 999999)
     params = urllib.urlencode({
         'api_key': '982d80f5',
         'api_secret': '96be22a7',
@@ -122,15 +122,23 @@ class Verify(ArigatoRequestHandler):
 
 class Get(ArigatoRequestHandler):
   def query(self, phone_numbers):
-    phone_numbers = PhoneNumber.query_phone_numbers(phone_numbers)
     if not phone_numbers:
       self.error(2)
       return
 
     ar = ArigatoResponse()
-    for p in phone_numbers:
-      ar.add_phone_number(p.phone_number, p.public_key)
-    self.success(ar)
+    fetched = False
+    for i in range(0, len(phone_numbers) / 30 + 1):
+      fetched_numbers = PhoneNumber.query_phone_numbers(
+          phone_numbers[i * 30:(i + 1) * 30])
+      for f in fetched_numbers:
+        ar.add_phone_number(f.phone_number, f.public_key)
+        fetched = True
+
+    if fetched:
+      self.success(ar)
+    else:
+      self.error(2)
 
   def get(self):
     pn = self.request.get('pn')
