@@ -17,7 +17,49 @@ class PhoneNumber(ndb.Model):
 
   @classmethod
   def query_phone_number(cls, phone_number_key):
-    return cls.query(PhoneNumber.phone_number==phone_number_key).fetch(1)
+    return cls.query(PhoneNumber.phone_number == phone_number_key).fetch(1)
+
+  @classmethod
+  def query_phone_numbers(cls, phone_numbers):
+    return cls.query(PhoneNumber.phone_number.IN(phone_numbers)).fetch(30)
+
+
+class ArigatoResponse(object):
+  def __init__(self):
+    self.err = 0
+
+  def dump(self):
+    return json.dumps(self.__dict__, sort_keys=True)
+
+  def add_phone_number(self, phone_number, public_key):
+    if not 'phone_numbers' in self.__dict__:
+      self.phone_numbers = []
+    self.phone_numbers.append({
+      'phone_number': phone_number,
+      'public_key': public_key,
+    })
+
+
+ArigatoResponse.error_messages = {
+  0: 'Success',
+  1: 'Fail to send SMS',
+  2: 'Fail to find the phone number',
+  3: 'Fail to verify',
+  4: 'Fail to convert the request to json data',
+}
+
+
+class ArigatoRequestHandler(webapp2.RequestHandler):
+  def error(self, err):
+    ar = ArigatoResponse()
+    ar.err = err
+    if self.request.get_all('msg'):
+      ar.err_message = ArigatoResponse.error_messages[err]
+    self.response.write(ar.dump())
+
+  def success(self, ar=ArigatoResponse()):
+    self.response.write(ar.dump())
+
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
@@ -25,14 +67,14 @@ class MainPage(webapp2.RequestHandler):
     self.response.write(u'ありがとうございます')
 
 
-class Init(webapp2.RequestHandler):
+class Init(ArigatoRequestHandler):
   def get(self):
     # Phone number
     pn = self.request.get('pn')
     if not pn:
       return
 
-    vc = '%6d' % random.randint(0, 999999)
+    vc = '%6d' % random.randint(100000, 999999)
     params = urllib.urlencode({
         'api_key': '982d80f5',
         'api_secret': '96be22a7',
@@ -43,10 +85,8 @@ class Init(webapp2.RequestHandler):
     err = json.loads(f.read())
 
     if err['messages'][0]['status'] != '0':
-      self.response.write(json.dumps(err, sort_keys=True, indent=4))
+      self.error(1)
       return
-
-    self.response.write('<div>Message sent.</div>')
 
     phone_numbers = PhoneNumber.query_phone_number(pn)
     if phone_numbers:
@@ -56,39 +96,62 @@ class Init(webapp2.RequestHandler):
       p = PhoneNumber(phone_number = pn,
                       verification_code = vc)
     p.put()
+    self.success()
 
 
-class Verify(webapp2.RequestHandler):
+class Verify(ArigatoRequestHandler):
   def get(self):
     pn = self.request.get('pn')
     phone_numbers = PhoneNumber.query_phone_number(pn)
     if not phone_numbers:
-      self.response.write("The phone number doesn't exist.")
+      self.error(2)
       return
 
     p = phone_numbers[0]
     vc = self.request.get('vc')
 
     if not p.verification_code == vc:
-      self.response.write('Not verified.')
+      self.error(3)
       return
 
     pk = self.request.get('pk')
     p.public_key = pk
     p.put()
-    self.response.write("Verified.")
+    self.success()
 
 
-class Get(webapp2.RequestHandler):
-  def get(self):
-    pn = self.request.get('pn')
-    phone_numbers = PhoneNumber.query_phone_number(pn)
+class Get(ArigatoRequestHandler):
+  def query(self, phone_numbers):
     if not phone_numbers:
-      self.response.write("The phone number doens't exist.")
+      self.error(2)
       return
 
-    p = phone_numbers[0]
-    self.response.write('<div>%s</div>' % p.public_key)
+    ar = ArigatoResponse()
+    fetched = False
+    for i in range(0, len(phone_numbers) / 30 + 1):
+      fetched_numbers = PhoneNumber.query_phone_numbers(
+          phone_numbers[i * 30:(i + 1) * 30])
+      for f in fetched_numbers:
+        ar.add_phone_number(f.phone_number, f.public_key)
+        fetched = True
+
+    if fetched:
+      self.success(ar)
+    else:
+      self.error(2)
+
+  def get(self):
+    pn = self.request.get('pn')
+    self.query(pn.split(','))
+
+  def post(self):
+    pn = self.request.get('pn')
+    contact = json.loads(pn)
+    if not contact:
+      self.error(4)
+      return
+
+    self.query(contact)
 
 
 application = webapp2.WSGIApplication([
