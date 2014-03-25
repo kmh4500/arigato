@@ -67,7 +67,7 @@ public class ContactsAddService extends IntentService {
                PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
                 while (cursor.moveToNext()) {
                     String phone = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                    try {
+                    try { 
                         Phonenumber.PhoneNumber phoneProto = phoneUtil.parse(phone, Locale.getDefault().getCountry());
                         String normalize = phoneUtil.format(phoneProto, PhoneNumberUtil.PhoneNumberFormat.E164);
                         array.put(normalize);
