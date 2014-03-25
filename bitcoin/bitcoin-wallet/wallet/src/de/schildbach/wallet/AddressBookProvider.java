@@ -39,6 +39,7 @@ public class AddressBookProvider extends ContentProvider
 
 	public static final String KEY_ROWID = "_id";
 	public static final String KEY_ADDRESS = "address";
+    public static final String KEY_PHONE = "phone";
 	public static final String KEY_LABEL = "label";
 
 	public static final String SELECTION_QUERY = "q";
@@ -50,23 +51,32 @@ public class AddressBookProvider extends ContentProvider
 		return Uri.parse("content://" + packageName + '.' + DATABASE_TABLE);
 	}
 
-	public static String resolveLabel(final Context context, @Nonnull final String address)
+	public static String[] resolveLabelAndPhone(final Context context, @Nonnull final String address)
 	{
 		String label = null;
+        String phone = null;
 
 		final Uri uri = contentUri(context.getPackageName()).buildUpon().appendPath(address).build();
-		final Cursor cursor = context.getContentResolver().query(uri, null, null, null, null);
+		final Cursor cursor = context.getContentResolver().query(uri, new String[] {
+                AddressBookProvider.KEY_LABEL, AddressBookProvider.KEY_PHONE
+        }, null, null, null);
 
 		if (cursor != null)
 		{
-			if (cursor.moveToFirst())
+			if (cursor.moveToFirst()) {
 				label = cursor.getString(cursor.getColumnIndexOrThrow(AddressBookProvider.KEY_LABEL));
-
+                phone = cursor.getString(cursor.getColumnIndexOrThrow(AddressBookProvider.KEY_PHONE));
+            }
 			cursor.close();
 		}
 
-		return label;
+		return new String[] {label, phone};
 	}
+
+    public static String resolveLabel(final Context context, @Nonnull final String address)
+    {
+        return resolveLabelAndPhone(context, address)[0];
+    }
 
 	private Helper helper;
 
@@ -92,7 +102,7 @@ public class AddressBookProvider extends ContentProvider
 		final String address = uri.getLastPathSegment();
 		values.put(KEY_ADDRESS, address);
 
-		long rowId = helper.getWritableDatabase().insertOrThrow(DATABASE_TABLE, null, values);
+		long rowId = helper.getWritableDatabase().insertWithOnConflict(DATABASE_TABLE, null,  values, SQLiteDatabase.CONFLICT_REPLACE);
 
 		final Uri rowUri = contentUri(getContext().getPackageName()).buildUpon().appendPath(address).appendPath(Long.toString(rowId)).build();
 
@@ -198,11 +208,12 @@ public class AddressBookProvider extends ContentProvider
 	private static class Helper extends SQLiteOpenHelper
 	{
 		private static final String DATABASE_NAME = "address_book";
-		private static final int DATABASE_VERSION = 1;
+		private static final int DATABASE_VERSION = 3;
 
 		private static final String DATABASE_CREATE = "CREATE TABLE " + DATABASE_TABLE + " (" //
 				+ KEY_ROWID + " INTEGER PRIMARY KEY AUTOINCREMENT, " //
 				+ KEY_ADDRESS + " TEXT NOT NULL, " //
+                + KEY_PHONE + " TEXT UNIQUE NOT NULL, " //
 				+ KEY_LABEL + " TEXT NULL);";
 
 		public Helper(final Context context)
@@ -219,18 +230,8 @@ public class AddressBookProvider extends ContentProvider
 		@Override
 		public void onUpgrade(final SQLiteDatabase db, final int oldVersion, final int newVersion)
 		{
-			db.beginTransaction();
-			try
-			{
-				for (int v = oldVersion; v < newVersion; v++)
-					upgrade(db, v);
-
-				db.setTransactionSuccessful();
-			}
-			finally
-			{
-				db.endTransaction();
-			}
+            db.execSQL("DROP TABLE IF EXISTS " + DATABASE_NAME);
+            onCreate(db);
 		}
 
 		private void upgrade(final SQLiteDatabase db, final int oldVersion)

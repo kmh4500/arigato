@@ -130,9 +130,14 @@ public class WalletAddressesAdapter extends BaseAdapter
 		addressView.setTextColor(isRotateKey ? colorInsignificant : colorSignificant);
 
 		final TextView labelView = (TextView) row.findViewById(R.id.address_book_row_label);
-		final String label = AddressBookProvider.resolveLabel(context, address.toString());
+        final String[] data = AddressBookProvider.resolveLabelAndPhone(context, address.toString());
+		String label = data[0];
+        final String phone = data[1];
 		if (label != null)
 		{
+            if (phone != null) {
+                label += " " + phone;
+            }
 			labelView.setText(label);
 			labelView.setTextColor(isRotateKey ? colorInsignificant : colorLessSignificant);
 		}

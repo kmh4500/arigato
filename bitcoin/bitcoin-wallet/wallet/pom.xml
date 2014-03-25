@@ -16,6 +16,11 @@
 	</parent>
 
 	<dependencies>
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>6.0</version>
+        </dependency>
 
 		<!-- android.*, java.*, javax.* -->
 		<dependency>

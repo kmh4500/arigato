@@ -80,13 +80,6 @@
 			</intent-filter>
 		</activity-alias>
 
-        <activity android:name="de.schildbach.wallet.ui.MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
 		<activity
 			android:name="de.schildbach.wallet.ui.SendCoinsActivity"
 			android:configChanges="keyboard|keyboardHidden"
@@ -137,8 +130,13 @@
 		<activity
 			android:name="de.schildbach.wallet.ui.AddressBookActivity"
 			android:configChanges="keyboard|keyboardHidden"
-			android:label="@string/address_book_activity_title"
-			android:screenOrientation="behind" />
+			android:label="@string/address_book_activity_title">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 		<activity
 			android:name="de.schildbach.wallet.ui.ExchangeRatesActivity"
 			android:configChanges="keyboard|keyboardHidden"
@@ -205,6 +203,9 @@
 		<service
 			android:name="de.schildbach.wallet.offline.AcceptBluetoothService"
 			android:exported="false" />
+
+        <service android:name="de.schildbach.wallet.service.ContactsAddService"
+            android:exported="false"/>
 
 		<receiver android:name="de.schildbach.wallet.service.AutosyncReceiver" >
 			<intent-filter>

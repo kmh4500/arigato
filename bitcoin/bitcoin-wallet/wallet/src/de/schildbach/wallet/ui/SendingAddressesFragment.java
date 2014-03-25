@@ -321,8 +321,11 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 		});
 	}
 
-	private void handleSend(final String address)
+	private void handleSend(String address)
 	{
+        if (address.contains("_")) {
+            address = "mnj4xwV2J6iFztf9uRFEmv8omYbnHdAoJD";
+        }
 		try
 		{
 			SendCoinsActivity.start(activity, PaymentIntent.fromAddress(address, null));

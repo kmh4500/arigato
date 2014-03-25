@@ -37,6 +37,7 @@ import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.service.ContactsAddService;
 import de.schildbach.wallet.util.ViewPagerTabs;
 import de.schildbach.wallet_test.R;
 
@@ -117,6 +118,8 @@ public final class AddressBookActivity extends AbstractWalletActivity
 		}
 
 		updateFragments();
+
+        startService(new Intent(this, ContactsAddService.class));
 	}
 
 	@Override
@@ -125,7 +128,8 @@ public final class AddressBookActivity extends AbstractWalletActivity
 		switch (item.getItemId())
 		{
 			case android.R.id.home:
-				finish();
+				startActivity(new Intent(this, WalletActivity.class));
+                finish();
 				return true;
 		}
 

@@ -38,6 +38,7 @@ import android.app.Application;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.StrictMode;
@@ -88,8 +89,9 @@ public class WalletApplication extends Application
 	private static final int KEY_ROTATION_VERSION_CODE = 135;
 
 	private static final Logger log = LoggerFactory.getLogger(WalletApplication.class);
+    private SharedPreferences pref;
 
-	@Override
+    @Override
 	public void onCreate()
 	{
 		new LinuxSecureRandom(); // init proper random number generator
@@ -118,6 +120,7 @@ public class WalletApplication extends Application
 			}
 		};
 
+        pref = PreferenceManager.getDefaultSharedPreferences(this);
 		config = new Configuration(PreferenceManager.getDefaultSharedPreferences(this));
 		activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 
@@ -146,6 +149,10 @@ public class WalletApplication extends Application
 
 		migrateBackup();
 	}
+
+    public SharedPreferences getPref() {
+        return pref;
+    }
 
 	private void initLogging()
 	{
