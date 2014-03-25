@@ -236,4 +236,6 @@
 	<string name="error_http">HTTP error %1$s:\n%2$s</string>
 
     <string name="go_to_wallet">Go to wallet</string>
+    <string name="verify">verify</string>
+    <string name="send_verification_code">send verification code</string>
 </resources>

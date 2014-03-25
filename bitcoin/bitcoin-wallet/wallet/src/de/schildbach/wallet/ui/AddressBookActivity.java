@@ -37,7 +37,10 @@ import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.PrefManager;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.service.ContactsAddService;
+import de.schildbach.wallet.sms.SmsActivity;
 import de.schildbach.wallet.util.ViewPagerTabs;
 import de.schildbach.wallet_test.R;
 
@@ -122,7 +125,15 @@ public final class AddressBookActivity extends AbstractWalletActivity
         startService(new Intent(this, ContactsAddService.class));
 	}
 
-	@Override
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!PrefManager.getInstance().isPhoneRegistered()) {
+            startActivity(new Intent(this, SmsActivity.class));
+        }
+    }
+
+    @Override
 	public boolean onOptionsItemSelected(final MenuItem item)
 	{
 		switch (item.getItemId())

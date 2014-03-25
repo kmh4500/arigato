@@ -89,7 +89,7 @@ public class WalletApplication extends Application
 	private static final int KEY_ROTATION_VERSION_CODE = 135;
 
 	private static final Logger log = LoggerFactory.getLogger(WalletApplication.class);
-    private SharedPreferences pref;
+    private static SharedPreferences pref;
 
     @Override
 	public void onCreate()
@@ -120,7 +120,7 @@ public class WalletApplication extends Application
 			}
 		};
 
-        pref = PreferenceManager.getDefaultSharedPreferences(this);
+        PrefManager.init(this);
 		config = new Configuration(PreferenceManager.getDefaultSharedPreferences(this));
 		activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 
@@ -149,10 +149,6 @@ public class WalletApplication extends Application
 
 		migrateBackup();
 	}
-
-    public SharedPreferences getPref() {
-        return pref;
-    }
 
 	private void initLogging()
 	{

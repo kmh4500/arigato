@@ -1,8 +1,6 @@
 package de.schildbach.wallet.service;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,7 +10,6 @@ import java.util.ArrayList;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -26,10 +23,8 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Bitmap.CompressFormat;
- 
+import android.os.AsyncTask;
+
 // Code from: http://lukencode.com/2010/04/27/calling-web-services-in-android-using-httpclient/
 public class RestClient
 {
@@ -89,7 +84,7 @@ public class RestClient
         return this;
     }
  
-    public String Execute(RequestMethod method) throws Exception
+    public String execute(RequestMethod method) throws Exception
     {
         switch (method)
         {
@@ -231,5 +226,20 @@ public class RestClient
             }
         }
         return sb.toString();
+    }
+
+    public void executeInBackground(final RequestMethod method) {
+        new AsyncTask<Void, Void, Void>() {
+
+            @Override
+            protected Void doInBackground(Void... voids) {
+                try {
+                    RestClient.this.execute(method);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        }.execute();
     }
 }

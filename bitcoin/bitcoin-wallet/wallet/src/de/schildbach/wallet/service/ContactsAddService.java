@@ -2,12 +2,10 @@ package de.schildbach.wallet.service;
 
 import android.app.IntentService;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
-import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
@@ -17,25 +15,21 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 import de.schildbach.wallet.AddressBookProvider;
+import de.schildbach.wallet.PrefManager;
 import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.PhoneUtil;
 
 /**
  * Created by kmh on 14. 3. 23.
  */
 public class ContactsAddService extends IntentService {
 
-    private final String KEY_CONTACTS = "contacts";
     private static boolean firstRun = true;
-
-    private SharedPreferences mPrefs;
 
     /**
          * A constructor is required, and must call the super IntentService(String)
@@ -48,7 +42,6 @@ public class ContactsAddService extends IntentService {
     @Override
     public void onCreate() {
         super.onCreate();
-        mPrefs = ((WalletApplication) getApplication()).getPref();
     }
 
     /**
@@ -64,20 +57,17 @@ public class ContactsAddService extends IntentService {
 
                 Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,	null, null, null, null);
 
-               PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
                 while (cursor.moveToNext()) {
                     String phone = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                    try { 
-                        Phonenumber.PhoneNumber phoneProto = phoneUtil.parse(phone, Locale.getDefault().getCountry());
-                        String normalize = phoneUtil.format(phoneProto, PhoneNumberUtil.PhoneNumberFormat.E164);
-                        array.put(normalize);
+                    try {
+                        array.put(PhoneUtil.normalize(phone));
                     } catch (NumberParseException e) {
                         e.printStackTrace();
                     }
                 }
                 Log.d("HS", array.toString());
                 try {
-                    String response = new RestClient("/get").AddParam("pn", array.toString()).Execute(RequestMethod.POST);
+                    String response = new RestClient("/get").AddParam("pn", array.toString()).execute(RequestMethod.POST);
                     if (!TextUtils.isEmpty(response)) {
                        JSONObject object = new JSONObject(response);
                         if (object.getInt("err") == 0) {
@@ -116,11 +106,11 @@ public class ContactsAddService extends IntentService {
     public boolean hasNewContacts() {
         Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,	null, null, null, null);
         int count = cursor.getCount();
-        int oldCount = mPrefs.getInt(KEY_CONTACTS, 0);
+        int oldCount = PrefManager.getInstance().getContactCount();
         if (oldCount == count) {
             return false;
         }
-        mPrefs.edit().putInt(KEY_CONTACTS, count);
+        PrefManager.getInstance().putContactCount(count);
         return true;
     }
 }
