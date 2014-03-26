@@ -16,6 +16,7 @@ public class SmsReceiver extends BroadcastReceiver {
     String publicKey;
     Context context;
     public static final String SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
+    private RestClient.RestCallback verificationCallback;
 
     @Override public void onReceive(Context context, Intent intent){
         this.context=context;
@@ -46,13 +47,16 @@ public class SmsReceiver extends BroadcastReceiver {
         }
     }
 
-    void init(String publicKey){
+    void init(String publicKey, RestClient.RestCallback verificationCallback){
         this.publicKey=publicKey;
+        this.verificationCallback = verificationCallback;
     }
 
     void verify(String phoneNumber, String verificationCode, String publicKey){
         try {
-            new RestClient("verify?pn="+phoneNumber+"&vc="+verificationCode+"&pk="+publicKey).executeInBackground(RequestMethod.GET);
+            new RestClient("verify?pn="+phoneNumber+"&vc="+verificationCode+"&pk="+publicKey).executeInBackground(
+                    RequestMethod.GET,
+                    verificationCallback);
         } catch (Exception e) {
             e.printStackTrace();
         }

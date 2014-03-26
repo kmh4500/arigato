@@ -15,6 +15,9 @@ public class PhoneUtil {
         PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
         Phonenumber.PhoneNumber phoneProto = phoneUtil.parse(phone, Locale.getDefault().getCountry());
         String normalized = phoneUtil.format(phoneProto, PhoneNumberUtil.PhoneNumberFormat.E164);
+        if (normalized.startsWith("+")) {
+            normalized = normalized.substring(1);
+        }
         return normalized;
     }
 }

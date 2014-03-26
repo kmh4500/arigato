@@ -68,6 +68,7 @@ public class ContactsAddService extends IntentService {
                 Log.d("HS", array.toString());
                 try {
                     String response = new RestClient("/get").AddParam("pn", array.toString()).execute(RequestMethod.POST);
+                    System.out.println(response);
                     if (!TextUtils.isEmpty(response)) {
                        JSONObject object = new JSONObject(response);
                         if (object.getInt("err") == 0) {

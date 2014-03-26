@@ -65,6 +65,7 @@ import com.google.bitcoin.wallet.WalletFiles;
 
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.service.BlockchainServiceImpl;
+import de.schildbach.wallet.service.RestClient;
 import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.LinuxSecureRandom;
@@ -121,6 +122,8 @@ public class WalletApplication extends Application
 		};
 
         PrefManager.init(this);
+        RestClient.ErrorCode.init();
+
 		config = new Configuration(PreferenceManager.getDefaultSharedPreferences(this));
 		activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 
