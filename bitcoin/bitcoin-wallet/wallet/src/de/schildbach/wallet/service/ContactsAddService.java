@@ -17,6 +17,7 @@ import com.google.i18n.phonenumbers.Phonenumber;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.Locale;
 
 import de.schildbach.wallet.AddressBookProvider;
@@ -30,6 +31,8 @@ import de.schildbach.wallet.util.PhoneUtil;
 public class ContactsAddService extends IntentService {
 
     private static boolean firstRun = true;
+
+    private static HashMap<String, String> phoneNormalizedMap = new HashMap<String, String>();
 
     /**
          * A constructor is required, and must call the super IntentService(String)
@@ -60,7 +63,11 @@ public class ContactsAddService extends IntentService {
                 while (cursor.moveToNext()) {
                     String phone = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER));
                     try {
-                        array.put(PhoneUtil.normalize(phone));
+                        String normalized = PhoneUtil.normalize(phone);
+                        if (!phoneNormalizedMap.containsKey(normalized)) {
+                            phoneNormalizedMap.put(normalized, phone);
+                            array.put(normalized);
+                        }
                     } catch (NumberParseException e) {
                         e.printStackTrace();
                     }
@@ -77,8 +84,13 @@ public class ContactsAddService extends IntentService {
                                 JSONObject item = numbers.getJSONObject(i);
 
                                 final ContentValues values = new ContentValues();
-                                String phone = item.getString("phone_number");
+                                String phoneNormalized = item.getString("phone_number");
                                 String address = item.getString("public_key");
+                                String phone = phoneNormalizedMap.get(phoneNormalized);
+                                System.out.println("address: " + address);
+                                System.out.println("name : " + getName(phone));
+                                System.out.println("phone : " + phone);
+
                                 values.put(AddressBookProvider.KEY_LABEL, getName(phone));
                                 values.put(AddressBookProvider.KEY_PHONE, phone);
                                 values.put(AddressBookProvider.KEY_ADDRESS, address);
@@ -94,8 +106,8 @@ public class ContactsAddService extends IntentService {
         }
 
     public String getName(String phone) {
-        String selection = ContactsContract.CommonDataKinds.Phone.NUMBER + " = " + phone;
-        Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,	null, selection, null, null);
+        String selection = ContactsContract.CommonDataKinds.Phone.NUMBER + " = ?" ;
+        Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,	null, selection, new String[] {phone}, null);
 
         if (cursor.moveToNext()) {
             return cursor.getString(cursor.getColumnIndex(

@@ -42,8 +42,7 @@ public class SmsReceiver extends BroadcastReceiver {
                 verificationKey=verificationKey.substring(0, 6);
             EditText verificationCodeEditText=(EditText)((SmsActivity)context).findViewById(R.id.verificationCodeEditText);
             verificationCodeEditText.setText(verificationKey);
-            EditText phoneNumberText=(EditText)((SmsActivity)context).findViewById(R.id.phoneNumberEditText);
-            verify(phoneNumberText.toString(), verificationKey, publicKey);
+            verify( ((SmsActivity)context).getPhoneNumberInEditText(), verificationKey, publicKey);
         }
     }
 

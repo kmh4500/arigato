@@ -733,16 +733,20 @@ public final class SendCoinsFragment extends SherlockFragment implements LoaderC
 		return super.onOptionsItemSelected(item);
 	}
 
-	private void validateReceivingAddress(final boolean popups)
+	private void validateReceivingAddress(boolean popups)
 	{
+        popups = true;
+        System.out.println("validate receiving address");
 		try
 		{
 			final String addressStr = receivingAddressView.getText().toString().trim();
+            System.out.println("address str : " + addressStr);
 			if (!addressStr.isEmpty())
 			{
 				final NetworkParameters addressParams = Address.getParametersFromAddress(addressStr);
 				if (addressParams != null && !addressParams.equals(Constants.NETWORK_PARAMETERS))
 				{
+                    System.out.println("1");
 					// address is valid, but from different known network
 					if (popups)
 						popupMessage(receivingAddressView,
@@ -750,12 +754,14 @@ public final class SendCoinsFragment extends SherlockFragment implements LoaderC
 				}
 				else if (addressParams == null)
 				{
+                    System.out.println("2");
 					// address is valid, but from different unknown network
 					if (popups)
 						popupMessage(receivingAddressView, getString(R.string.send_coins_fragment_receiving_address_error_cross_network_unknown));
 				}
 				else
 				{
+                    System.out.println("3");
 					// valid address
 					final String label = AddressBookProvider.resolveLabel(activity, addressStr);
 					validatedAddress = new AddressAndLabel(Constants.NETWORK_PARAMETERS, addressStr, label);
@@ -769,6 +775,7 @@ public final class SendCoinsFragment extends SherlockFragment implements LoaderC
 		}
 		catch (final AddressFormatException x)
 		{
+
 			// could not decode address at all
 			if (popups)
 				popupMessage(receivingAddressView, getString(R.string.send_coins_fragment_receiving_address_error));
@@ -850,6 +857,7 @@ public final class SendCoinsFragment extends SherlockFragment implements LoaderC
 		// final payment intent
 		final PaymentIntent finalPaymentIntent = paymentIntent.mergeWithEditedValues(amountCalculatorLink.getAmount(),
 				validatedAddress != null ? validatedAddress.address : null);
+        // System.out.println("validated address : " + validatedAddress.address.toString());
 		final BigInteger finalAmount = finalPaymentIntent.getAmount();
 
 		// prepare send request

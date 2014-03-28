@@ -25,7 +25,6 @@ import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 public class SmsActivity extends Activity {
-    private String mPhoneNumber;
     private SmsReceiver mSmsReciver;
     private RestClient.ResultCallback verificationCallback = new RestClient.ResultCallback() {
 
@@ -49,8 +48,7 @@ public class SmsActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.sms_verification);
 
-        mPhoneNumber = getMyPhoneNumber();
-        init(mPhoneNumber);
+        init(getMyPhoneNumber());
 
         Button verifyButton = (Button) this.findViewById(R.id.verifyButton);
         verifyButton.setOnClickListener(new OnClickListener() {
@@ -58,7 +56,7 @@ public class SmsActivity extends Activity {
             public void onClick(View arg0) {
                 EditText verificationCodeEditText = (EditText) findViewById(R.id.verificationCodeEditText);
                 final String verificationKey = (verificationCodeEditText.getText()).toString();
-                mSmsReciver.verify(mPhoneNumber, verificationKey, getAddressStr());
+                mSmsReciver.verify(getPhoneNumberInEditText(), verificationKey, getAddressStr());
             }
         });
     }
@@ -94,9 +92,7 @@ public class SmsActivity extends Activity {
         smsButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View arg0) {
-                EditText phoneNumberEditText = (EditText) findViewById(R.id.phoneNumberEditText);
-                String phoneNumber = (phoneNumberEditText.getText()).toString();
-                new RestClient("init?pn=" + phoneNumber).executeInBackground(RequestMethod.GET, null);
+                new RestClient("init?pn=" + getPhoneNumberInEditText()).executeInBackground(RequestMethod.GET, null);
             }
         });
     }
@@ -108,6 +104,19 @@ public class SmsActivity extends Activity {
         try {
             number = PhoneUtil.normalize(phoneManager.getLine1Number());
             return number;
+        } catch (NumberParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String getPhoneNumberInEditText() {
+        EditText phoneNumberEditText = (EditText) findViewById(R.id.phoneNumberEditText);
+        String phoneNumber = (phoneNumberEditText.getText()).toString();
+        try {
+            String normalized = PhoneUtil.normalize(phoneNumber);
+            phoneNumberEditText.setText(normalized);
+            return normalized;
         } catch (NumberParseException e) {
             e.printStackTrace();
         }

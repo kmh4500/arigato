@@ -136,8 +136,10 @@ public class WalletAddressesAdapter extends BaseAdapter
 		if (label != null)
 		{
             if (phone != null) {
+                System.out.println("phone : " + phone);
                 label += " " + phone;
             }
+            System.out.println("label : " + label);
 			labelView.setText(label);
 			labelView.setTextColor(isRotateKey ? colorInsignificant : colorLessSignificant);
 		}
