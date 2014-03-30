@@ -128,7 +128,7 @@ class Get(ArigatoRequestHandler):
 
     ar = ArigatoResponse()
     fetched = False
-    for i in range(0, len(phone_numbers) / 30 + 1):
+    for i in range(0, (len(phone_numbers) - 1) / 30 + 1):
       fetched_numbers = PhoneNumber.query_phone_numbers(
           phone_numbers[i * 30:(i + 1) * 30])
       for f in fetched_numbers:
