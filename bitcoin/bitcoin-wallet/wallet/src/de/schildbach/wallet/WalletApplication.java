@@ -69,6 +69,7 @@ import de.schildbach.wallet.service.RestClient;
 import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.LinuxSecureRandom;
+import de.schildbach.wallet.util.PhoneUtil;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -123,6 +124,7 @@ public class WalletApplication extends Application
 
         PrefManager.init(this);
         RestClient.ErrorCode.init();
+        PhoneUtil.init(this);
 
 		config = new Configuration(PreferenceManager.getDefaultSharedPreferences(this));
 		activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
